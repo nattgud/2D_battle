@@ -3,10 +3,6 @@ package Util;
 import model.DBResult;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class DB {
 	private static final String URL = "jdbc:mysql://localhost:3306/battle_game";

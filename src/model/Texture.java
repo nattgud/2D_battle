@@ -2,7 +2,6 @@ package model;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.InputStream;
 import java.util.Arrays;
 import Util.Random;
 

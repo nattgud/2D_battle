@@ -4,16 +4,18 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferStrategy;
 
-import Util.Settings;
 import controller.Game;
-import model.GameRenderer;
 import model.Position;
 
+// Drawable canvas
 public class Canvas extends java.awt.Canvas {
 	public Canvas() { setBackground(Color.BLACK); }
+	// game handler
 	private Game game;
 	public void init() {
+		// init game handler, connect canvas
 		this.game = new Game(this);
+		// init mouse listeners, connect to game
 		this.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
@@ -36,9 +38,11 @@ public class Canvas extends java.awt.Canvas {
 				game.keyPress(e);
 			}
 		});
+		// render first frame
 		this.render();
 	}
 
+	// render new frame
 	public void render() {
 		BufferStrategy bs = getBufferStrategy();
 		if (bs == null) {
@@ -46,9 +50,9 @@ public class Canvas extends java.awt.Canvas {
 			return;
 		}
 		Graphics2D g2d = (Graphics2D) bs.getDrawGraphics();
-		g2d.setColor(Color.BLACK); g2d.fillRect(0,0, Settings.width, Settings.height);
 		g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+		// draw game frame
 		this.game.draw(g2d);
 
 		g2d.dispose();

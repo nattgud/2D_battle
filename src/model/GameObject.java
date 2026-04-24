@@ -24,38 +24,4 @@ public class GameObject {
 		this.pos.x = newPos.x;
 		this.pos.y = newPos.y;
 	}
-	public boolean canReach(Position target) {
-		return false;
-	}
-
-	public void drawText(Graphics2D canvas, String text, int x, int y, Color color, int size, boolean bold) {
-		canvas.setFont(new Font("Arial", bold?Font.BOLD:Font.PLAIN, size));
-		canvas.setColor(Color.BLACK);
-		if(bold) {
-			canvas.drawString(text, x + 1, y + 1);
-			canvas.drawString(text, x - 1, y - 1);
-			canvas.drawString(text, x + 1, y - 1);
-			canvas.drawString(text, x - 1, y + 1);
-			canvas.drawString(text, x + 1, y);
-			canvas.drawString(text, x - 1, y);
-			canvas.drawString(text, x, y - 1);
-			canvas.drawString(text, x, y + 1);
-		}
-		canvas.setColor(color);
-		canvas.drawString(text, x, y);
-	}
-	public void drawText(Graphics2D canvas, String text, int x, int y, Color color) {
-		canvas.setFont(new Font("Arial", Font.BOLD, 12));
-		canvas.setColor(Color.BLACK);
-		canvas.drawString(text, x + 1, y + 1);
-		canvas.drawString(text, x - 1, y - 1);
-		canvas.drawString(text, x + 1, y - 1);
-		canvas.drawString(text, x - 1, y + 1);
-		canvas.drawString(text, x + 1, y);
-		canvas.drawString(text, x - 1, y);
-		canvas.drawString(text, x, y - 1);
-		canvas.drawString(text, x, y + 1);
-		canvas.setColor(color);
-		canvas.drawString(text, x, y);
-	}
 }

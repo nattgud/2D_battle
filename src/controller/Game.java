@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.awt.*;
 
-import Util.DB;
 import Util.Pathfinder;
 import Util.Random;
 import Util.Settings;
@@ -15,7 +14,8 @@ import service.Canvas;
 import javax.swing.*;
 
 public class Game {
-	private GameRenderer gameRenderer;
+	// game draw handler
+	private final GameRenderer gameRenderer;
 
 	private final List<String> monsterNames = new ArrayList<>();
 	private final List<Unit> units = new ArrayList<>();
@@ -30,26 +30,30 @@ public class Game {
 	private Timer timer;
 	private int state = 0;
 	private String playerName = "Player";
-	private ArrayList<SaveGame> saveGames = new ArrayList<>();
+	private final ArrayList<SaveGame> saveGames = new ArrayList<>();
 
 	public Game(Canvas canvas) {
 		this.canvas = canvas;
 		this.gameRenderer = new GameRenderer();
+		// init save slots
 		for(int c = 0; c < 5; c++) {
 			this.saveGames.add(new SaveGame(c));
 		}
 		for(SaveGame sg : this.saveGames)
 			sg.updExists();
 
+		// fill background grid
 		for (int y = 0; y < Settings.height; y++)
 			for (int x = 0; x < Settings.width; x++)
 				backgrounds.add(new Background(new Position(x, y), Texture.randomType("grass")));
 
+		// begin button
 		gameRenderer.addButton(
 				"beginbutton",
 				new Position((Settings.width-4)/2, Settings.height-2).realPos(),
 				"BEGIN"
 		);
+		// save/load buttons
 		for(int c = 0; c < 5; c++) {
 			gameRenderer.addButton(
 					"savebutton_" + c,
@@ -73,17 +77,20 @@ public class Game {
 		);
 		newGame();
 	}
+
 	private void newGame() {
 		String input = JOptionPane.showInputDialog(null, "Spelarnamn: ");
 		if (input != null && !input.isEmpty()) {
 			this.playerName = input;
 		}
+		// reset state
 		this.state = 0;
 		this.selected = null;
 		this.interactive = true;
 		this.playerTurn = true;
 		this.obstacles.clear();
 		this.units.clear();
+		// place random obstacles
 		for (int i = 0; i < Random.randomInt(40, 80); i++) {
 			Position p;
 			do { p = new Position(Random.randomInt(0, Settings.width - 1), Random.randomInt(0, Settings.height - 1)); }
@@ -93,18 +100,22 @@ public class Game {
 		generateUnits();
 		this.canvas.render();
 	}
+
 	private void generateUnits() {
+		// load unit names from db
 		try {
 			this.monsterNames.clear();
 			this.monsterNames.addAll(UnitRepository.getAllNames());
 		} catch (Exception e) {
 			System.out.println("Couldn't load units");
 		}
+		// spawn player units on left side
 		for(int c = 0; c < 10; c++)
 			units.add(new Unit(
-				new Position(2, 2 + c),
-				this.monsterNames.get(Random.randomInt(0, this.monsterNames.size()-1)),
-				"player"));
+					new Position(2, 2 + c),
+					this.monsterNames.get(Random.randomInt(0, this.monsterNames.size()-1)),
+					"player"));
+		// spawn enemy units on right side
 		for(int c = 0; c < 10; c++)
 			units.add(new Unit(
 					new Position(Settings.width - 3, 2 + c),
@@ -112,6 +123,7 @@ public class Game {
 					"enemy"));
 	}
 
+	// block spawn columns and occupied tiles
 	private boolean isOccupiedStart(Position pos, List<? extends GameObject> list) {
 		return pos.x == 2 || pos.x == Settings.width - 3 || isOccupied(pos, list);
 	}
@@ -124,6 +136,7 @@ public class Game {
 		return new Pathfinder(units, obstacles);
 	}
 
+	// check if selected unit can walk to pos
 	private boolean isWalkable(Position pos, Pathfinder pf) {
 		return pf.canReach(selected, pos, false) && pf.distance(selected, pos) <= selected.reach();
 	}
@@ -145,12 +158,14 @@ public class Game {
 
 	private void handleRangedAttack(Unit attacker, Unit target) {
 		interactive = false;
+		// determine projectile type
 		String shotType = "arrow";
 		if(attacker.race().equals("magic")) shotType = "magic";
 		if(attacker.hasStrength("fire")) shotType = "fire";
 		if(attacker.hasStrength("water")) shotType = "water";
 		Particle arrow = new Particle(shotType, selected.pos().realPos(), target.pos().realPos(), 50);
 		particles.add(arrow);
+		// animate arrow, apply damage on arrival
 		timer = new Timer(1000 / 30, e -> {
 			arrow.move();
 			if (arrow.done()) {
@@ -162,8 +177,10 @@ public class Game {
 		});
 		timer.start();
 	}
+
 	private void hurt(Unit victim, Unit attacker) {
 		boolean strongHurt = victim.hurt(attacker);
+		// pick damage particle based on attacker race
 		Particle tempBlood = new Particle((strongHurt)?Texture.DAMAGE_STRONG:Texture.DAMAGE, victim.pos().realPos(), 20);
 		if(attacker.race.equals("magic")) {
 			tempBlood = new Particle((strongHurt)?Texture.DAMAGE_MAGIC_STRONG:Texture.DAMAGE_MAGIC, victim.pos().realPos(), 20);
@@ -176,6 +193,7 @@ public class Game {
 		particles.add(blood);
 		Particle blade = new Particle(Texture.ATTACK, attacker.pos().realPos(), 20);
 		if(!attacker.isRanged()) particles.add(blade);
+		// animate hit particles, end turn on finish
 		timer = new Timer(1000/60, e -> {
 			blood.live();
 			blade.live();
@@ -192,6 +210,7 @@ public class Game {
 		timer.start();
 	}
 
+	// step towards target, attack when adjacent
 	private void handleMeleeAttack(Unit target, Pathfinder pf) {
 		interactive = false;
 		timer = new Timer(100, e -> {
@@ -209,6 +228,7 @@ public class Game {
 	private void handleMove(Position target, Pathfinder pf) {
 		selected.target = target;
 		interactive = false;
+		// step along path until target reached
 		timer = new Timer(100, e -> {
 			if (pf.distance(selected, target) > 0) {
 				selected.moveTo(pf.nextStep(selected, target, true));
@@ -224,12 +244,14 @@ public class Game {
 	private void handlePauseMenu() {
 		for(int c = 0; c < 5; c++) {
 			if(gameRenderer.mouseOverButton("savebutton_"+c, hoverPos)) {
+				// write slot to db
 				this.saveGames.get(c).setUnits(this.units);
 				this.saveGames.get(c).setTurn(this.playerTurn);
 				this.saveGames.get(c).setPlayerName(this.playerName);
 				this.saveGames.get(c).writeToDB();
 				for(SaveGame sg : this.saveGames)
 					sg.updExists();
+				// show confirmation icon
 				Particle okIcon = new Particle(Texture.UI_YES, new Position(200, 100), 30);
 				particles.add(okIcon);
 				timer = new Timer(1000 / 30, e -> {
@@ -243,6 +265,7 @@ public class Game {
 				timer.start();
 			}
 			if(gameRenderer.mouseOverButton("loadbutton_"+c, hoverPos)) {
+				// read slot from db, restore state
 				this.saveGames.get(c).readFromDB();
 				this.units.clear();
 				this.units.addAll(this.saveGames.get(c).getUnits());
@@ -280,6 +303,7 @@ public class Game {
 		}
 	}
 
+	// toggle pause menu
 	public void keyPress(KeyEvent e) {
 		if(e.getKeyCode() == KeyEvent.VK_ESCAPE) {
 			if(this.state == 1) {
@@ -290,6 +314,7 @@ public class Game {
 			canvas.render();
 		}
 	}
+
 	public boolean click(String type, Position clickPos, boolean userClick) {
 		if(state == 2) {
 			newGame();
@@ -299,6 +324,7 @@ public class Game {
 			this.handlePauseMenu();
 			return false;
 		}
+		// setup screen: cycle unit names or start game
 		if(state == 0) {
 			if(gameRenderer.mouseOverButton("beginbutton", hoverPos)) state = 1;
 
@@ -320,6 +346,7 @@ public class Game {
 		boolean found = false;
 		Pathfinder pf = buildPathfinder();
 
+		// select own unit or attack enemy
 		for (Unit unit : aliveUnits()) {
 			if (!unit.isHovered(clickPos)) continue;
 			boolean own = unit.team().equals(playerTurn ? "player" : "enemy");
@@ -332,6 +359,7 @@ public class Game {
 			}
 		}
 
+		// right click empty tile: move selected unit
 		if (type.equals("right") && !found && selected != null) {
 			Position target = Position.gamePos(clickPos);
 			if (isWalkable(target, pf)) handleMove(target, pf);
@@ -348,6 +376,7 @@ public class Game {
 		Pathfinder pf = buildPathfinder();
 		List<ResultUnit> targets = new ArrayList<>();
 
+		// score each enemy-player pair
 		for (Unit enemy : aliveUnits("enemy")) {
 			for (Unit player : aliveUnits("player")) {
 				int dist = pf.distance(enemy, player.pos());
@@ -384,6 +413,7 @@ public class Game {
 			return;
 		}
 
+		// execute best action
 		ResultUnit best = targets.get(0);
 		selected = best.unit;
 
@@ -405,12 +435,14 @@ public class Game {
 	public void draw(Graphics2D g) {
 		gameRenderer.drawGameObjectList(g, backgrounds);
 		gameRenderer.drawGameObjectList(g, obstacles);
+		// dim scene when paused
 		if(state == 3) {
 			gameRenderer.setAlpha(g, 0.8f);
 		} else {
 			gameRenderer.setAlpha(g, 1f);
 		}
 
+		// draw walkable tiles for selected unit
 		if (selected != null && playerTurn && state == 1) {
 			Pathfinder pf = buildPathfinder();
 			for (int y = 0; y < Settings.height; y++) {
@@ -437,6 +469,7 @@ public class Game {
 				}
 			}
 		}
+		// highlight hovered unit
 		if(this.state == 1) {
 			for (Unit unit : this.aliveUnits()) {
 				Color col = Color.BLACK;
@@ -456,6 +489,7 @@ public class Game {
 			}
 		}
 
+		// draw units, highlight selected
 		for (Unit unit : units) {
 			gameRenderer.drawGameObject(g, unit);
 			if (selected == unit && state == 1) {
@@ -468,11 +502,11 @@ public class Game {
 				);
 			}
 		}
+		// setup screen hover highlight
 		if(state == 0) {
 			if(this.hoverPos.x >= Settings.scale*2 && this.hoverPos.x < Settings.scale*3) {
 				for (int index = 2; index < 12; index++) {
 					if(this.hoverPos.y >= Settings.scale*index && this.hoverPos.y < Settings.scale*(index+1)) {
-						g.drawRect((Settings.scale*2), (Settings.scale*index), Settings.scale, Settings.scale);
 						gameRenderer.drawRectangle(
 								g,
 								new Position(2, index).realPos(),
@@ -490,6 +524,7 @@ public class Game {
 
 		if(state != 2) {
 			gameRenderer.drawParticleList(g, particles);
+			// draw pause menu overlay
 			if(this.state == 3) {
 				gameRenderer.setAlpha(g, 1f);
 				gameRenderer.drawRectangle(g,
@@ -513,7 +548,6 @@ public class Game {
 				gameRenderer.drawButton("restartbutton", g, hoverPos);
 				return;
 			}
-			g.setFont(new Font("Arial", Font.BOLD, 16));
 			for (Unit unit : units) {
 				//unit.drawUI(g, unit.isHovered(hoverPos), this.state == 0 ? 1:2);
 				gameRenderer.drawUI(g, unit, unit.isHovered(hoverPos), this.state == 0 ? 1:2);	// Fixa!
@@ -522,6 +556,7 @@ public class Game {
 		if(this.state == 0)
 			return;
 
+		// draw active player name
 		gameRenderer.drawOutlinedText(g, playerTurn ? this.playerName : "Computer", 5, 25, 24, Color.WHITE);
 
 		int playerScore = aliveUnits("player").size();
@@ -529,11 +564,12 @@ public class Game {
 
 		if (playerScore == 0 || enemyScore == 0) state = 2;
 
+		// draw win/loss/draw screen
 		if(state == 2) {
 			gameRenderer.drawTextWithBackground(
 					g,
 					new Position(Settings.width/2,
-					Settings.height/2).realPos(),
+							Settings.height/2).realPos(),
 					playerScore == 0 && enemyScore == 0 ? "DRAW!" : playerScore == 0 ? "LOSER!" : "WINNER!",
 					48
 			);
