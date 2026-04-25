@@ -5,9 +5,9 @@ import model.DBResult;
 import java.sql.*;
 
 public class DB {
-	private static final String URL = "jdbc:mysql://localhost:3306/battle_game";
-	private static final String USER = "root";
-	private static final String PASSWORD = "";
+	private static final String URL = "jdbc:mysql://localhost:3306/"+Settings.dbname;
+	private static final String USER = Settings.dbusername;
+	private static final String PASSWORD = Settings.dbpassword;
 	private static Connection conn;
 
 	public static Connection getConnection() throws SQLException {
