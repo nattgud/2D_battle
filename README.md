@@ -2,6 +2,8 @@
 
 Ett rutnätsbaserat strategispel byggt i Java med Swing.
 
+![Skärmbild av spelet live](screenshot.png)
+
 ---
 
 ## Om spelet
